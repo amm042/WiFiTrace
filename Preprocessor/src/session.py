@@ -429,6 +429,9 @@ def get_sessions(infile, year, output_dir, ofile_flag):
     global df_interpolate
     gc.enable()
 
+    print("GET_SESSIONS ON {}".format(infile))
+    exit()
+
     ofile = infile.split(".csv")[0] + "_code_fields.csv"
     print(ofile)
     if not os.path.isfile(ofile):
@@ -460,9 +463,10 @@ def get_sessions(infile, year, output_dir, ofile_flag):
 
         # Clean the AP name columns if it has some hash value
         # Some AP names have a #string# format instead of building name, we will get rid of those rows
-        df = df[~df['AP_Name'].str.match("#")]
-        print(len(df.index), df["MAC"].nunique())
-        print(df["AP_Name"].nunique())
+        # not needed at bucknell.
+        #df = df[~df['AP_Name'].str.match("#")]
+        #print(len(df.index), df["MAC"].nunique())
+        #print(df["AP_Name"].nunique())
 
         # Now, add a column that gives the earlier time_in_mins
         # and then find the time difference in mins between 2 consecutive timestamps
@@ -508,7 +512,10 @@ def get_sessions(infile, year, output_dir, ofile_flag):
         # Now, add start and end columns
         df["Session_AP_Name"], df["Start"], df["End"] = zip(*df.apply(add_start_end_time, axis = 1))
 
-        df.drop(['Time_in_Minutes', 'AP_Name', 'Event_Code', 'Prev_Time_in_Minutes', 'Time_Diff', 'Prev_Event_Code', 'Keep_Event_Code', 'Next_Event_Code', 'Next_Time_in_Minutes', 'Next_AP_Name', 'Next_Time_Diff'], axis=1, inplace=True)
+        #df.drop(['Time_in_Minutes', 'AP_Name', 'Event_Code', 'Prev_Time_in_Minutes', 'Time_Diff', 'Prev_Event_Code', 'Keep_Event_Code', 'Next_Event_Code', 'Next_Time_in_Minutes', 'Next_AP_Name', 'Next_Time_Diff'], axis=1, inplace=True)
+
+        # keep ap name
+        df.drop(['Time_in_Minutes', 'Event_Code', 'Prev_Time_in_Minutes', 'Time_Diff', 'Prev_Event_Code', 'Keep_Event_Code', 'Next_Event_Code', 'Next_Time_in_Minutes', 'Next_AP_Name', 'Next_Time_Diff'], axis=1, inplace=True)
 
         # Now, group the rows by MAC, Start Time
         df_g = df.sort_values("End", ascending=False).groupby(["MAC", "Start"]).first().reset_index()
