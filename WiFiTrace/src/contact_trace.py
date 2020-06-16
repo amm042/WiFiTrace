@@ -3,23 +3,23 @@ BSD 3-Clause License
 
 Copyright (c) 2020, UMass Laboratory for Advanced Systems Software All rights reserved.
 
-Redistribution and use in source and binary forms, with or without modification, 
+Redistribution and use in source and binary forms, with or without modification,
 are permitted provided that the following conditions are met:
 
     Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
 
-    Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following 
+    Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following
     disclaimer in the documentation and/or other materials provided with the distribution.
 
-    Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products 
+    Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products
     derived from this software without specific prior written permission.
 
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, 
-INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. 
-IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
-CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, 
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, 
-STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, 
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
+INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
 EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 
@@ -127,7 +127,7 @@ def valid_args(patient_mac, numdays, date):
     month = int(date[4:6])
     date_val = int(date[6:])
 
-    if (year > 2015) and (year < 2020):
+    if (year > 2015) and (year <= 2030):
         if (month > 0) and (month < 13):
             if (date_val > 0) and (date_val < 31):
                 date_flag = True
@@ -137,6 +137,7 @@ def valid_args(patient_mac, numdays, date):
             print(">> Invalid month of the year \n")
     else:
         print(">> Year not present in the WiFi log database \n")
+
 
     if (patient_mac_flag and numdays_flag and date_flag):
         return_flag = True
@@ -219,7 +220,7 @@ def get_colocation(row):
 
 # This function is used for printing the co-located user report
 def get_user_report(patient_mac, odate, numdays, start_date, end_date):
-    print(flist)
+    print("get_user_report: flist is", flist)
     df_list = []
     result = pd.DataFrame()
     result_with_patient = pd.DataFrame()
@@ -267,7 +268,7 @@ def get_user_report(patient_mac, odate, numdays, start_date, end_date):
     f.write("-----------------------------------------------------------\n")
 
     for index, row in df_sorted.iterrows():
-        f.write("%27s \t %5d \n" %(row['MAC'], row['Total_Coloc_duration']))
+        f.write("%9s \t %5d \n" %(row['MAC'], row['Total_Coloc_duration']))
 
     f.write("\n")
 
@@ -289,12 +290,13 @@ def get_user_report(patient_mac, odate, numdays, start_date, end_date):
 
         f.write("Co-location Details of User with MAC ID : %s \n" % item)
         f.write("----------------------------------------------------------------------------------------------\n")
-        f.write("Date \t Start Time \t End Time \t Building \t Room No. \t\t AP_Name \t Duration(mins) \n")
+        f.write("Date \t Start Time \t End Time \tAP_Name \t Duration(mins) \n")
         f.write("----------------------------------------------------------------------------------------------\n")
 
         for index, row in df_item.iterrows():
             # Date
-            df_date = str(row["Year"]) + str(row["Month"]) + str(row["Date"])
+            #df_date = str(row["Year"]) + str(row["Month"]) + str(row["Date"])
+            df_date = "{:04}{:02}{:02}".format( row["Year"], row["Month"], row["Date"])
             #print(df_date)
             # Coloc Traj
             co_traj = ast.literal_eval(row["Coloc_traj"])
@@ -308,8 +310,9 @@ def get_user_report(patient_mac, odate, numdays, start_date, end_date):
 
             for k in range(0, len(co_traj)):
                 if co_traj[k] != "UNKN":
-                    bldg = co_traj[k].split("-")[0]
-                    room = co_traj[k].split("-")[1].split("-")[0]
+                    #bldg = co_traj[k].split("-")[0]
+                    #room = co_traj[k].split("-")[1].split("-")[0]
+
                     start_hr = int(co_start[k] / 60)
                     start_min = int(co_start[k] % 60)
                     end_hr = int(co_end[k] / 60)
@@ -318,8 +321,8 @@ def get_user_report(patient_mac, odate, numdays, start_date, end_date):
                     print(co_end, end_hr, end_min)
                     #f.write("%9s \t %4d \t %4d \t %6s \t %9s \t %15s \t %9s \n" % (df_date, co_start[k], co_end[k],
                     #                                                                       bldg, room, co_traj[k], co_duration[k]))
-                    f.write("%9s \t %4d:%2d \t %4d:%2d \t %6s \t %9s \t %15s \t %9s \n" % (df_date, start_hr, start_min, end_hr, end_min,
-                                                                                   bldg, room, co_traj[k], co_duration[k]))
+                    f.write("%8s \t %4d:%2d \t %4d:%2d \t %6s \t %9s \n" % (df_date, start_hr, start_min, end_hr, end_min,
+                                                                                   co_traj[k], co_duration[k]))
 
         f.write("\n")
 
@@ -450,7 +453,7 @@ def get_trace(patient_mac, numdays, odate, w, sess_length, oformat):
     f.readline()
     line = f.readline()
     print(line)
-    idir=line.split("=")[1]
+    idir=line.split("=")[1].strip()
 
     if(len(idir)==0):
         print("Enter Valid idir name in config file")
@@ -501,13 +504,13 @@ def get_trace(patient_mac, numdays, odate, w, sess_length, oformat):
     # f.write("MAC ID : %s \t" % patient_mac)
     # f.write("Date : %s \n" % date)
     f.write("----------------------------------------------------------------------------------------------\n")
-    f.write(" Date \t  Start Time \t End Time \t Building \t Room No. \t AP_Name \t Duration(mins) \n")
+    f.write(" Date \t  Start Time \t End Time \tAP_Name \t Duration(mins) \n")
     f.write("----------------------------------------------------------------------------------------------\n")
 
     for date in past_n_days:
         for file_ in os.listdir(idir):
-            fname = idir + file_
-            print(fname)
+            fname = idir + file_        #os.path.join!
+            print("Reading datafile", fname)
             if(fname.endswith(".csv")):
                 df1 = pd.read_csv(fname, index_col=False)
             else:
@@ -596,11 +599,37 @@ def get_trace(patient_mac, numdays, odate, w, sess_length, oformat):
                         patient_stat_ap_traj_end = []
                         patient_stat_ap_traj_duration = []
 
+
+
+
                         # Task (iii)
+                        # this fails with
+                        # Traceback (most recent call last):
+                        #   File "main.py", line 123, in <module>
+                        #     main(sys.argv[1:])
+                        #   File "main.py", line 119, in main
+                        #     ret_val = ct.get_trace(patient_mac, str(numdays), end, w, int(sess_length), oformat)
+                        #   File "/home/amm042/src/WiFiTrace/WiFiTrace/src/contact_trace.py", line 605, in get_trace
+                        #     patient_ap_traj = ast.literal_eval((df[df["MAC"] == patient_mac]["AP_Trajectory"].values.tolist())[0])
+                        #   File "/usr/lib/python3.8/ast.py", line 96, in literal_eval
+                        #     return _convert(node_or_string)
+                        #   File "/usr/lib/python3.8/ast.py", line 95, in _convert
+                        #     return _convert_signed_num(node)
+                        #   File "/usr/lib/python3.8/ast.py", line 74, in _convert_signed_num
+                        #     return _convert_num(node)
+                        #   File "/usr/lib/python3.8/ast.py", line 66, in _convert_num
+                        #     raise ValueError('malformed node or string: ' + repr(node))
+                        # ValueError: malformed node or string: ['gQ/kc3DI', 'M82iqOdz', 'XeN2Ubvi', 'LTcggIl9', 'gAvDfc8w', 'u0VyzOsA', 'gAvDfc8w', 'EsKkeIaS', 'M82iqOdz', 'LTcggIl9', 'M82iqOdz', 'LTcggIl9', 'M82iqOdz', 'gdwtwP+2', 'WvaThmfi', 'gQ/kc3DI', 'YNb4iJ+J', 'H48OVZq1', 'YNb4iJ+J', 'H48OVZq1', 'DZO5IwdU', 'WaLtH8rD', 'hm5AoSZE', 'WaLtH8rD', 'cMYd/E6V', 'CcWu75i9', 'eV5gJF7p', 'UNKN', 'D8QLG0NC', 'S/armHjX', 'D8QLG0NC', 'Y3KhZ9v/', 'SsVwZX9s', 'D8QLG0NC', 'S/armHjX', 'D8QLG0NC', 'SsVwZX9s', 'S/armHjX', 'D8QLG0NC', 'S/armHjX', 'UNKN', 'q64kk7t/', 'S/armHjX']
+                        #
+                        print("EVAL: ",(df[df["MAC"] == patient_mac]["AP_Trajectory"].values.tolist())[0])
                         patient_ap_traj = ast.literal_eval((df[df["MAC"] == patient_mac]["AP_Trajectory"].values.tolist())[0])
                         patient_ap_traj_start = ast.literal_eval((df[df["MAC"] == patient_mac]["AP_Traj_Start"].values.tolist())[0])
                         patient_ap_traj_end = ast.literal_eval((df[df["MAC"] == patient_mac]["AP_Traj_End"].values.tolist())[0])
                         patient_ap_traj_duration = ast.literal_eval((df[df["MAC"] == patient_mac]["AP_Duration"].values.tolist())[0])
+                        #patient_ap_traj = df[df["MAC"] == patient_mac]["AP_Trajectory"].values.tolist()[0]
+                        #patient_ap_traj_start = df[df["MAC"] == patient_mac]["AP_Traj_Start"].values.tolist()[0]
+                        #patient_ap_traj_end = df[df["MAC"] == patient_mac]["AP_Traj_End"].values.tolist()[0]
+                        #patient_ap_traj_duration = df[df["MAC"] == patient_mac]["AP_Duration"].values.tolist()[0]
 
                         #d = ast.literal_eval(patient_ap_traj_duration)
                         #print(d[0], d[1])
@@ -608,12 +637,12 @@ def get_trace(patient_mac, numdays, odate, w, sess_length, oformat):
                         #print(patient_ap_traj, patient_ap_traj[0])
                         #print(patient_ap_traj_start)
                         #print(patient_ap_traj_end)
-                        #print(patient_ap_traj_duration)
+                        #print("patient_ap_traj_duration:",patient_ap_traj_duration, type(patient_ap_traj_duration))
 
                         # Now, extract only stationary periods
                         print(len(patient_ap_traj),len(patient_ap_traj_start), len(patient_ap_traj_end), len(patient_ap_traj_duration))
                         for i in range(0, len(patient_ap_traj_duration)):
-                            #print(i)
+                            #print("patient_ap_traj_duration[i]:", i, patient_ap_traj_duration[i])
                             if int(patient_ap_traj_duration[i]) > sess_length:
                                 # This is a stationary period
                                 patient_stat_ap_traj.append(patient_ap_traj[i])
@@ -631,8 +660,9 @@ def get_trace(patient_mac, numdays, odate, w, sess_length, oformat):
 
                         for x in range(0, len(patient_stat_ap_traj)):
                             if patient_stat_ap_traj[x] != "UNKN":
-                                bldg = patient_stat_ap_traj[x].split("-")[0]
-                                room = patient_stat_ap_traj[x].split("-")[1].split("-")[0]
+                                #bldg = patient_stat_ap_traj[x].split("-")[0]
+                                #room = patient_stat_ap_traj[x].split("-")[1].split("-")[0]
+
                                 start_hr = int(patient_stat_ap_traj_start[x]/60)
                                 start_min = int(patient_stat_ap_traj_start[x]%60)
                                 end_hr = int(patient_stat_ap_traj_end[x]/60)
@@ -643,8 +673,8 @@ def get_trace(patient_mac, numdays, odate, w, sess_length, oformat):
                                 #f.write("%7s \t %8s \t %6s \t %6s \t %6s \t %s \n" %(patient_stat_ap_traj_start[x],
                                 #        int(patient_stat_ap_traj_end[x]), bldg, room, patient_stat_ap_traj[x],
                                 #        patient_stat_ap_traj_duration[x]))
-                                f.write("%9s \t %4d:%2d \t %4d:%2d \t %6s \t %6s \t %15s \t %-6s \n" %(date, start_hr,start_min, end_hr, end_min,
-                                                                                           bldg, room, patient_stat_ap_traj[x],
+                                f.write("%9s \t %4d:%2d \t %4d:%2d \t %6s \t %-6s \n" %(date, start_hr,start_min, end_hr, end_min,
+                                                                                            patient_stat_ap_traj[x],
                                                                                             patient_stat_ap_traj_duration[x]))
 
                         f.write("\n")
@@ -690,7 +720,7 @@ def get_trace(patient_mac, numdays, odate, w, sess_length, oformat):
     f.close()
     # Now, we have saved the files and file list of the co-locators
     # Print reports from these co-locator file lists
-    print(flist)
+    print("Flist: ", flist)
     get_user_report(patient_mac, odate, numdays, start_date, end_date)
 
     return(0)
