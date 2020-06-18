@@ -31,9 +31,10 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import pandas as pd
 import os
 from datetime import datetime, timedelta
+import dateutil.parser
 import ast
 import gc
-
+import json
 # Global Paths
 idir = ""
 mac_name_file = ""
@@ -253,80 +254,138 @@ def get_user_report(patient_mac, odate, numdays, start_date, end_date):
     if not os.path.exists(report_dir):
         os.mkdir(report_dir)
 
-    user_report_fname = report_dir + "User_Report_" + patient_mac + "_" + odate + "_" + numdays + ".txt"
-    f = open(user_report_fname, "a+")
-    f.write("\n This is a User Report with details about all users co-located with : \n ")
-    f.write("\t\t\t Patient MAC %s \n" % patient_mac)
-    f.write("\t\t\t From %s till %s\n \n" %(start_date, end_date))
-    #f.write("User Report related to patient mac %s \n" % patient_mac)
-    f.write("*********************************************************************************************\n")
-    f.write("            Summary of all co-locators (Mac ID and total co-location duration)\n")
-    f.write("*********************************************************************************************\n\n")
-    f.write(" Total number of campus users co-located with the infected patient %d\n" %df_sorted["MAC"].nunique())
-    f.write(" Duration of co-location is %s till %s\n\n" %(start_date, end_date))
-    f.write("\t\t\t MAC \t\t\t Co-location Duration(mins)\n")
-    f.write("-----------------------------------------------------------\n")
+    user_report_fname = report_dir + "User_Report_" + patient_mac + "_" + odate + "_" + numdays
 
-    for index, row in df_sorted.iterrows():
-        f.write("%9s \t %5d \n" %(row['MAC'], row['Total_Coloc_duration']))
+    json_report = True
+    text_report = False
+    if json_report:
+        doc = {'doctype': 'user report',
+               'created': datetime.now().isoformat()}
+        doc['patient_mac'] = patient_mac
+        doc['start_date'] = start_date
+        doc['end_date'] = end_date
+        doc['count'] = df_sorted["MAC"].nunique()
+        #doc['contacts'] = df_sorted.to_json(orient='records', lines=True)
+        #doc['contacts'] = [result[result["MAC"] == item].to_json(orient='records') for item in df_sorted["MAC"].to_list()]
+        doc['contacts'] = []
+        for item in df_sorted["MAC"].to_list():
+            for index, row in result[result["MAC"] == item].iterrows():
+                # Date
+                #df_date = str(row["Year"]) + str(row["Month"]) + str(row["Date"])
+                df_date = "{:04}{:02}{:02}".format( row["Year"], row["Month"], row["Date"])
+                #print(df_date)
+                # Coloc Traj
+                co_traj = ast.literal_eval(row["Coloc_traj"])
+                #print(co_traj[0])
+                # Start Time
+                co_start = ast.literal_eval(row["Coloc_start"])
 
-    f.write("\n")
+                # End Time
+                co_end = ast.literal_eval(row["Coloc_end"])
+                # Duration
+                co_duration = ast.literal_eval(row["Coloc_duration"])
 
-    # Now, for each mac print the total co-location duration followed by the date-wise trajectory details
-    # Date : total Colocation duration in mins
-    # Start Time, End Time, Building, AP_Name, Duration in mins
-
-    mac_list = df_sorted["MAC"].to_list()
-    f.write("Below is a list of all the : \n"
-            "\t\t\t(i) locations, \n"
-            "\t\t\t(ii) start times, and \n"
-            "\t\t\t(iii) duration of co-location of users on campus with the infected patient \n\n")
-    f.write("*********************************************************************************************\n")
-    f.write("     (Detail Report) Individual Co-location and Duration List of all co-locators \n")
-    f.write("*********************************************************************************************\n\n")
-
-    for item in mac_list:
-        df_item = result[result["MAC"] == item]
-
-        f.write("Co-location Details of User with MAC ID : %s \n" % item)
-        f.write("----------------------------------------------------------------------------------------------\n")
-        f.write("Date \t Start Time \t End Time \tAP_Name \t Duration(mins) \n")
-        f.write("----------------------------------------------------------------------------------------------\n")
-
-        for index, row in df_item.iterrows():
-            # Date
-            #df_date = str(row["Year"]) + str(row["Month"]) + str(row["Date"])
-            df_date = "{:04}{:02}{:02}".format( row["Year"], row["Month"], row["Date"])
-            #print(df_date)
-            # Coloc Traj
-            co_traj = ast.literal_eval(row["Coloc_traj"])
-            #print(co_traj[0])
-            # Start Time
-            co_start = ast.literal_eval(row["Coloc_start"])
-            # End Time
-            co_end = ast.literal_eval(row["Coloc_end"])
-            # Duration
-            co_duration = ast.literal_eval(row["Coloc_duration"])
-
-            for k in range(0, len(co_traj)):
-                if co_traj[k] != "UNKN":
-                    #bldg = co_traj[k].split("-")[0]
-                    #room = co_traj[k].split("-")[1].split("-")[0]
+                contact = {
+                    'date': df_date,
+                    'patient_mac': patient_mac,
+                    'contact_mac': item,
+                    'total_duration': sum(co_duration),
+                    'detail': []
+                }
+                for k in range(0, len(co_traj)):
 
                     start_hr = int(co_start[k] / 60)
                     start_min = int(co_start[k] % 60)
                     end_hr = int(co_end[k] / 60)
                     end_min = int(co_end[k] % 60)
-                    print(co_start, start_hr, start_min)
-                    print(co_end, end_hr, end_min)
-                    #f.write("%9s \t %4d \t %4d \t %6s \t %9s \t %15s \t %9s \n" % (df_date, co_start[k], co_end[k],
-                    #                                                                       bldg, room, co_traj[k], co_duration[k]))
-                    f.write("%8s \t %4d:%2d \t %4d:%2d \t %6s \t %9s \n" % (df_date, start_hr, start_min, end_hr, end_min,
-                                                                                   co_traj[k], co_duration[k]))
+
+                    dt = dateutil.parser.parse(
+                        df_date + " {:02}:{:02}".format(start_hr, start_min))
+
+                    contact['detail'] += [
+                        {'start': dt.isoformat(),
+                         'duration': co_duration[k],
+                         'ap': co_traj[k]}
+                    ]
+                doc['contacts'] += [contact]
+
+            with open(user_report_fname + ".json", "w") as f:
+                json.dump(doc, f, indent=True,sort_keys=False)
+
+    if text_report:
+        f = open(user_report_fname + ".txt", "a+")
+        f.write("\n This is a User Report with details about all users co-located with : \n ")
+        f.write("\t\t\t Patient MAC %s \n" % patient_mac)
+        f.write("\t\t\t From %s till %s\n \n" %(start_date, end_date))
+        #f.write("User Report related to patient mac %s \n" % patient_mac)
+        f.write("*********************************************************************************************\n")
+        f.write("            Summary of all co-locators (Mac ID and total co-location duration)\n")
+        f.write("*********************************************************************************************\n\n")
+        f.write(" Total number of campus users co-located with the infected patient %d\n" %df_sorted["MAC"].nunique())
+        f.write(" Duration of co-location is %s till %s\n\n" %(start_date, end_date))
+        f.write("\t\t\t MAC \t\t\t Co-location Duration(mins)\n")
+        f.write("-----------------------------------------------------------\n")
+
+        for index, row in df_sorted.iterrows():
+            f.write("%9s \t %5d \n" %(row['MAC'], row['Total_Coloc_duration']))
 
         f.write("\n")
 
-    f.close()
+        # Now, for each mac print the total co-location duration followed by the date-wise trajectory details
+        # Date : total Colocation duration in mins
+        # Start Time, End Time, Building, AP_Name, Duration in mins
+
+        mac_list = df_sorted["MAC"].to_list()
+        f.write("Below is a list of all the : \n"
+                "\t\t\t(i) locations, \n"
+                "\t\t\t(ii) start times, and \n"
+                "\t\t\t(iii) duration of co-location of users on campus with the infected patient \n\n")
+        f.write("*********************************************************************************************\n")
+        f.write("     (Detail Report) Individual Co-location and Duration List of all co-locators \n")
+        f.write("*********************************************************************************************\n\n")
+
+        for item in mac_list:
+            df_item = result[result["MAC"] == item]
+
+            f.write("Co-location Details of User with MAC ID : %s \n" % item)
+            f.write("----------------------------------------------------------------------------------------------\n")
+            f.write("Date \t Start Time \t End Time \tAP_Name \t Duration(mins) \n")
+            f.write("----------------------------------------------------------------------------------------------\n")
+
+            for index, row in df_item.iterrows():
+                # Date
+                #df_date = str(row["Year"]) + str(row["Month"]) + str(row["Date"])
+                df_date = "{:04}{:02}{:02}".format( row["Year"], row["Month"], row["Date"])
+                #print(df_date)
+                # Coloc Traj
+                co_traj = ast.literal_eval(row["Coloc_traj"])
+                #print(co_traj[0])
+                # Start Time
+                co_start = ast.literal_eval(row["Coloc_start"])
+                # End Time
+                co_end = ast.literal_eval(row["Coloc_end"])
+                # Duration
+                co_duration = ast.literal_eval(row["Coloc_duration"])
+
+                for k in range(0, len(co_traj)):
+                    if co_traj[k] != "UNKN":
+                        #bldg = co_traj[k].split("-")[0]
+                        #room = co_traj[k].split("-")[1].split("-")[0]
+
+                        start_hr = int(co_start[k] / 60)
+                        start_min = int(co_start[k] % 60)
+                        end_hr = int(co_end[k] / 60)
+                        end_min = int(co_end[k] % 60)
+                        print(co_start, start_hr, start_min)
+                        print(co_end, end_hr, end_min)
+                        #f.write("%9s \t %4d \t %4d \t %6s \t %9s \t %15s \t %9s \n" % (df_date, co_start[k], co_end[k],
+                        #                                                                       bldg, room, co_traj[k], co_duration[k]))
+                        f.write("%8s \t %4d:%2d \t %4d:%2d \t %6s \t %9s \n" % (df_date, start_hr, start_min, end_hr, end_min,
+                                                                                       co_traj[k], co_duration[k]))
+
+            f.write("\n")
+
+        f.close()
 
 
 # ["Start", "End","Session_AP_Name", "Next_Time_Diff", "MAC", "Year", "Month", "Date"]
@@ -496,16 +555,29 @@ def get_trace(patient_mac, numdays, odate, w, sess_length, oformat):
     if not os.path.exists(report_dir):
         os.mkdir(report_dir)
 
-    patient_report_fname = report_dir + "Patient_Report_" + patient_mac + "_" + odate + "_" + numdays + ".txt"
-    f = open(patient_report_fname, "a+")
+    patient_report_fname = report_dir + "Patient_Report_" + patient_mac + "_" + odate + "_" + numdays
 
-    f.write("\n\nThis is the PATIENT REPORT for mac id : %s \n" % patient_mac)
-    f.write("Below are the list of locations visited and time of visit by the patient from %s till %s\n \n" % (start_date, end_date))
-    # f.write("MAC ID : %s \t" % patient_mac)
-    # f.write("Date : %s \n" % date)
-    f.write("----------------------------------------------------------------------------------------------\n")
-    f.write(" Date \t  Start Time \t End Time \tAP_Name \t Duration(mins) \n")
-    f.write("----------------------------------------------------------------------------------------------\n")
+    json_report = True
+    text_report = False
+
+    if text_report:
+        f = open(patient_report_fname + ".txt", "a+")
+
+        f.write("\n\nThis is the PATIENT REPORT for mac id : %s \n" % patient_mac)
+        f.write("Below are the list of locations visited and time of visit by the patient from %s till %s\n \n" % (start_date, end_date))
+        # f.write("MAC ID : %s \t" % patient_mac)
+        # f.write("Date : %s \n" % date)
+        f.write("----------------------------------------------------------------------------------------------\n")
+        f.write(" Date \t  Start Time \t End Time \tAP_Name \t Duration(mins) \n")
+        f.write("----------------------------------------------------------------------------------------------\n")
+
+    if json_report:
+        json_doc = {'doctype': 'patient report',
+                    'created': datetime.now().isoformat(),
+                    'patient_mac': patient_mac,
+                    'start_date': start_date,
+                    'end_date': end_date,
+                    'locations': [] }
 
     for date in past_n_days:
         for file_ in os.listdir(idir):
@@ -574,8 +646,8 @@ def get_trace(patient_mac, numdays, odate, w, sess_length, oformat):
                         # Now, remove the consequetive repeating elements in AP_list and compress it
                         df.apply(get_traj, axis=1)
 
-                        print(len(AP_traj_list), len(AP_traj_start_list), len(AP_traj_end_list))
-                        print(len(df.index))
+                        #print(len(AP_traj_list), len(AP_traj_start_list), len(AP_traj_end_list))
+                        #print(len(df.index))
 
                         df["AP_Trajectory"], df["AP_Traj_Start"], df["AP_Traj_End"], df[
                             "AP_Duration"] = AP_traj_list, AP_traj_start_list, AP_traj_end_list, AP_duration
@@ -584,7 +656,7 @@ def get_trace(patient_mac, numdays, odate, w, sess_length, oformat):
 
                         # Now, save it
                         df.to_csv(ofile, index=False)
-                        print(df.head(5))
+                        #print(df.head(5))
                     else:
                         print(ofile)
                         df = pd.read_csv(ofile, index_col=False)
@@ -600,28 +672,7 @@ def get_trace(patient_mac, numdays, odate, w, sess_length, oformat):
                         patient_stat_ap_traj_duration = []
 
 
-
-
-                        # Task (iii)
-                        # this fails with
-                        # Traceback (most recent call last):
-                        #   File "main.py", line 123, in <module>
-                        #     main(sys.argv[1:])
-                        #   File "main.py", line 119, in main
-                        #     ret_val = ct.get_trace(patient_mac, str(numdays), end, w, int(sess_length), oformat)
-                        #   File "/home/amm042/src/WiFiTrace/WiFiTrace/src/contact_trace.py", line 605, in get_trace
-                        #     patient_ap_traj = ast.literal_eval((df[df["MAC"] == patient_mac]["AP_Trajectory"].values.tolist())[0])
-                        #   File "/usr/lib/python3.8/ast.py", line 96, in literal_eval
-                        #     return _convert(node_or_string)
-                        #   File "/usr/lib/python3.8/ast.py", line 95, in _convert
-                        #     return _convert_signed_num(node)
-                        #   File "/usr/lib/python3.8/ast.py", line 74, in _convert_signed_num
-                        #     return _convert_num(node)
-                        #   File "/usr/lib/python3.8/ast.py", line 66, in _convert_num
-                        #     raise ValueError('malformed node or string: ' + repr(node))
-                        # ValueError: malformed node or string: ['gQ/kc3DI', 'M82iqOdz', 'XeN2Ubvi', 'LTcggIl9', 'gAvDfc8w', 'u0VyzOsA', 'gAvDfc8w', 'EsKkeIaS', 'M82iqOdz', 'LTcggIl9', 'M82iqOdz', 'LTcggIl9', 'M82iqOdz', 'gdwtwP+2', 'WvaThmfi', 'gQ/kc3DI', 'YNb4iJ+J', 'H48OVZq1', 'YNb4iJ+J', 'H48OVZq1', 'DZO5IwdU', 'WaLtH8rD', 'hm5AoSZE', 'WaLtH8rD', 'cMYd/E6V', 'CcWu75i9', 'eV5gJF7p', 'UNKN', 'D8QLG0NC', 'S/armHjX', 'D8QLG0NC', 'Y3KhZ9v/', 'SsVwZX9s', 'D8QLG0NC', 'S/armHjX', 'D8QLG0NC', 'SsVwZX9s', 'S/armHjX', 'D8QLG0NC', 'S/armHjX', 'UNKN', 'q64kk7t/', 'S/armHjX']
-                        #
-                        print("EVAL: ",(df[df["MAC"] == patient_mac]["AP_Trajectory"].values.tolist())[0])
+                        #print("EVAL: ",(df[df["MAC"] == patient_mac]["AP_Trajectory"].values.tolist())[0])
                         patient_ap_traj = ast.literal_eval((df[df["MAC"] == patient_mac]["AP_Trajectory"].values.tolist())[0])
                         patient_ap_traj_start = ast.literal_eval((df[df["MAC"] == patient_mac]["AP_Traj_Start"].values.tolist())[0])
                         patient_ap_traj_end = ast.literal_eval((df[df["MAC"] == patient_mac]["AP_Traj_End"].values.tolist())[0])
@@ -640,7 +691,7 @@ def get_trace(patient_mac, numdays, odate, w, sess_length, oformat):
                         #print("patient_ap_traj_duration:",patient_ap_traj_duration, type(patient_ap_traj_duration))
 
                         # Now, extract only stationary periods
-                        print(len(patient_ap_traj),len(patient_ap_traj_start), len(patient_ap_traj_end), len(patient_ap_traj_duration))
+                        #print(len(patient_ap_traj),len(patient_ap_traj_start), len(patient_ap_traj_end), len(patient_ap_traj_duration))
                         for i in range(0, len(patient_ap_traj_duration)):
                             #print("patient_ap_traj_duration[i]:", i, patient_ap_traj_duration[i])
                             if int(patient_ap_traj_duration[i]) > sess_length:
@@ -673,11 +724,22 @@ def get_trace(patient_mac, numdays, odate, w, sess_length, oformat):
                                 #f.write("%7s \t %8s \t %6s \t %6s \t %6s \t %s \n" %(patient_stat_ap_traj_start[x],
                                 #        int(patient_stat_ap_traj_end[x]), bldg, room, patient_stat_ap_traj[x],
                                 #        patient_stat_ap_traj_duration[x]))
-                                f.write("%9s \t %4d:%2d \t %4d:%2d \t %6s \t %-6s \n" %(date, start_hr,start_min, end_hr, end_min,
+
+                                if text_report:
+                                    f.write("%9s \t %4d:%2d \t %4d:%2d \t %6s \t %-6s \n" %(date, start_hr,start_min, end_hr, end_min,
                                                                                             patient_stat_ap_traj[x],
                                                                                             patient_stat_ap_traj_duration[x]))
-
-                        f.write("\n")
+                                if json_report:
+                                    json_doc['locations'] += [{
+                                        'start': dateutil.parser.parse(
+                                            date_str+" {:02}:{:02}"
+                                            .format(start_hr, start_min))
+                                            .isoformat(),
+                                        'duration': patient_stat_ap_traj_duration[x],
+                                        'ap': patient_stat_ap_traj[x]
+                                    }]
+                        if text_report:
+                            f.write("\n")
                         print(date)
 
                         #print(patient_stat_ap_traj)
@@ -706,7 +768,7 @@ def get_trace(patient_mac, numdays, odate, w, sess_length, oformat):
                             flist.append(ofname)
                         else:
                             ofname = temp_dir + date + "_" + patient_mac + ".json"
-                            df_new.to_json(ofname, index=False)
+                            df_new.to_json(ofname, orient='table', index=False)
                             flist.append(ofname)
 
                         print(list(df_new))
@@ -715,9 +777,13 @@ def get_trace(patient_mac, numdays, odate, w, sess_length, oformat):
                     else:
                         f.write("%9s \t \t \t User Not on Campus \n\n" % date)
                         print("Patient_MAC trajectory not found in file \n")
-
-    f.write("---------------------------------------------------------------------------------------------------\n")
-    f.close()
+    if text_report:
+        f.write("---------------------------------------------------------------------------------------------------\n")
+        f.close()
+    if json_report:
+        json_doc['count'] = len(json_doc['locations'])
+        with open(patient_report_fname + ".json", "w") as f:
+            json.dump(json_doc, f, indent=True,sort_keys=False)
     # Now, we have saved the files and file list of the co-locators
     # Print reports from these co-locator file lists
     print("Flist: ", flist)
