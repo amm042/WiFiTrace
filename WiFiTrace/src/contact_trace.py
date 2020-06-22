@@ -646,8 +646,8 @@ def get_trace(patient_mac, numdays, odate, w, sess_length, oformat):
                         # Now, remove the consequetive repeating elements in AP_list and compress it
                         df.apply(get_traj, axis=1)
 
-                        #print(len(AP_traj_list), len(AP_traj_start_list), len(AP_traj_end_list))
-                        #print(len(df.index))
+                        print(len(AP_traj_list), len(AP_traj_start_list), len(AP_traj_end_list), len(AP_duration))
+                        print(len(df.index))
 
                         df["AP_Trajectory"], df["AP_Traj_Start"], df["AP_Traj_End"], df[
                             "AP_Duration"] = AP_traj_list, AP_traj_start_list, AP_traj_end_list, AP_duration
@@ -775,7 +775,8 @@ def get_trace(patient_mac, numdays, odate, w, sess_length, oformat):
                         print(df_new.head(5))
 
                     else:
-                        f.write("%9s \t \t \t User Not on Campus \n\n" % date)
+                        if text_report:
+                            f.write("%9s \t \t \t User Not on Campus \n\n" % date)
                         print("Patient_MAC trajectory not found in file \n")
     if text_report:
         f.write("---------------------------------------------------------------------------------------------------\n")

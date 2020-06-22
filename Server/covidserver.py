@@ -44,6 +44,7 @@ def upload():
         return response
 
 
+    # no longer using IP source
     file_ip_src = ".".join(file.filename.split('.')[:4])
     file_date = file.filename.split('-')[1].split('.')[0]
     filename = os.path.join(app.config['UPLOAD_FOLDER'],
@@ -51,7 +52,7 @@ def upload():
 
     processed_output_filename = os.path.join(
         app.config['PROCESSED_DATA_PATH'],
-        file_date + '-' + file_ip_src + "-wifitrace.log")
+        file_date + "-wifitrace.log")
 
     year = file_date[:4]
 
