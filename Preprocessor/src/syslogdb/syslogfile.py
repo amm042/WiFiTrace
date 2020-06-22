@@ -1,6 +1,6 @@
 import dateutil.parser
 import re
-
+import os
 class syslogfile:
 
     """
@@ -31,13 +31,21 @@ Jun  4 14:49:14 <IP: Rxk6sTF4> stm[3319]:  <501095> <NOTI> |AP <AP: ryya9cBB>@<I
     # match digits enclosed in brackets (first one is the event id)
     brackets = re.compile("<(\d*)>")
 
-    def __init__(self, syslogfilename=None):
+    def __init__(self, syslogfilename=None, tail=False):
         "attach to a syslog file"
         self.syslogfilename = syslogfilename
+        self.tail = tail
 
     def __enter__(self):
         self.syslogfile = open(self.syslogfilename,
             encoding="ascii", errors="backslashreplace")
+        if self.tail:
+            # see to last 1k in file.
+            filelen = os.stat(self.syslogfilename).st_size
+            if filelen > 1024:
+                self.syslogfile.seek(filelen - 1024, 0)
+            # remove the first likely partial line
+            self.syslogfile.readline()
         return self
 
     def __exit__(self, type, value, traceback):
@@ -60,7 +68,6 @@ Jun  4 14:49:14 <IP: Rxk6sTF4> stm[3319]:  <501095> <NOTI> |AP <AP: ryya9cBB>@<I
         # 0,1,2 event time
         # Month (3 letter), Day of month, Time (24 hr 00:00:00)
         when = dateutil.parser.parse(" ".join(items[0:3]))
-
 
         # 3 process name/pid
         # 'stm[3644]:'

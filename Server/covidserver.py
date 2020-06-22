@@ -17,7 +17,7 @@ app.config['UPLOAD_FOLDER'] = '/tmp/covid/upload'
 
 app.config['PREPROCESSOR_PATH'] = '/home/amm042/src/WiFiTrace/Preprocessor/src'
 app.config['PREPROCESSOR_PROG'] = 'buckell_preproc.py'
-app.config['PROCESSED_DATA_PATH'] = '/home/amm042/src/WiFiTrace/WiFiTrace/data'
+app.config['PROCESSED_DATA_PATH'] = '/home/amm042/src/WiFiTrace/WifiTrace/data'
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 

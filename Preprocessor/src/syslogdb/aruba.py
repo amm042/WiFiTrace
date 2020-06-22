@@ -17,7 +17,10 @@ ignore_events = [501218,    # vlan assignment
                  522274,    # user auth failed
                  522310,    #  auth_gsm_publish_cluster_sta_section: csta_section_update failed
                  522010,    # User de-authenticated cause=user request
-                 522275,    # User Authentication failed. 
+                 522275,    # User Authentication failed.
+                 520002,    # Authentication server request Timeout
+                 501037,    # no association found trying to disassociate
+                 522276,    # Authentication Server Out Of Service while serving request
                  ]
 
 re_mac = re.compile(r"<MAC: (.*?)>")
@@ -40,10 +43,21 @@ def aruba_event(event, msg):
 
     result = None
     if event in assoc_events:
-        result = ("assoc", macs[0], macs[1])
+        if len(aps)==0:
+            # print(msg)
+            # print(macs)
+            # print(aps)
+            aps = ['------']
+        result = ("assoc", macs[0], aps[0])
 
     elif event in dis_events:
-        result = ("dis", macs[0], macs[1])
+
+        if len(aps)==0:
+            # print(msg)
+            # print(macs)
+            # print(aps)
+            aps = ['------']
+        result = ("dis", macs[0], aps[0])
 
     elif event in ignore_events:
         pass
