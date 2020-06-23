@@ -49,8 +49,8 @@ def main ():
                         default=str(datetime.datetime.now().year))
     parser.add_argument('--heatmap_duration', help="Min duration in minutes for heatmap inclusion",
                         default=5)
-    parser.add_argument('-m', '--heatmap_output_filename', required = True,
-                        help='Name of file to write heatmap to.')
+    # parser.add_argument('-m', '--heatmap_output_filename', required = True,
+    #                     help='Name of file to write heatmap to.')
     parser.add_argument('--overwrite', default=False,
                         help="Overwrite existing output instead of appending.")
     args = parser.parse_args()
@@ -220,7 +220,7 @@ def main ():
     # print(df)
     # print(old_df)
 
-    new = pandas.concat([old_df, df])
+    new = pandas.concat([old_df, df], sort=False)
     #new = df.drop(dupes)
     new = new.drop_duplicates()
 
@@ -234,11 +234,11 @@ def main ():
     for k,i in ap_heatmap.items():
         ap_heatmap[k] = len(i)
 
-    print("AP Heatmap")
-    print(ap_heatmap)
-    # write heatmap file
-    with open(args.heatmap_output_filename, 'w') as heatmapfile:
-        json.dump(ap_heatmap, heatmapfile)
+    # print("AP Heatmap")
+    # print(ap_heatmap)
+    # # write heatmap file
+    # with open(args.heatmap_output_filename, 'w') as heatmapfile:
+    #     json.dump(ap_heatmap, heatmapfile)
 
 if __name__=="__main__":
     main()

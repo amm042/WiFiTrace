@@ -17,7 +17,7 @@ app.config['UPLOAD_FOLDER'] = '/tmp/covid/upload'
 
 app.config['PREPROCESSOR_PATH'] = '/home/amm042/src/WiFiTrace/Preprocessor/src'
 app.config['PREPROCESSOR_PROG'] = 'buckell_preproc.py'
-app.config['PROCESSED_DATA_PATH'] = '/home/amm042/src/WiFiTrace/WifiTrace/data'
+app.config['PROCESSED_DATA_PATH'] = '/home/amm042/src/WiFiTrace/WiFiTrace/data'
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
@@ -52,7 +52,7 @@ def upload():
 
     processed_output_filename = os.path.join(
         app.config['PROCESSED_DATA_PATH'],
-        file_date + "-wifitrace.log")
+        file_date + "-wifitrace.csv")
 
     year = file_date[:4]
 
