@@ -219,8 +219,7 @@ def main ():
     new = new.astype('str')
     new = new.drop_duplicates(subset=["MAC","Session_AP_Name",
                                       "Year","Month","Date",
-                                      "Start_Time","End_Time"],
-                              ignore_index=True)
+                                      "Start_Time","End_Time"])
 
     print("Writing csv. Old len {}, new len {}.".format(
         len(old_df), len(new)
