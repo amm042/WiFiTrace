@@ -48,7 +48,7 @@ def aruba_event(event, msg):
             # print(msg)
             # print(macs)
             # print(aps)
-            aps = ['------']
+            aps = macs[1:]
         result = ("assoc", macs[0], aps[0])
 
     elif event in dis_events:
@@ -57,7 +57,7 @@ def aruba_event(event, msg):
             # print(msg)
             # print(macs)
             # print(aps)
-            aps = ['------']
+            aps = macs[1:]
         result = ("dis", macs[0], aps[0])
 
     elif event in ignore_events:
