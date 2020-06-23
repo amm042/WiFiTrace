@@ -47,8 +47,8 @@ def main ():
                         help='Name of the output file (csv) to write.')
     parser.add_argument('-y', '--year', help="Year to assume for dates",
                         default=str(datetime.datetime.now().year))
-    parser.add_argument('--heatmap_duration', help="Min duration in minutes for heatmap inclusion",
-                        default=5)
+    parser.add_argument('--duration', help="Min duration in minutes for inclusion",
+                        default=3)
     # parser.add_argument('-m', '--heatmap_output_filename', required = True,
     #                     help='Name of file to write heatmap to.')
     parser.add_argument('--overwrite', default=False,
@@ -78,23 +78,26 @@ def main ():
     #last_when = datetime.datetime(2020,6,8,11,30)
 
     print("Last event is at {}".format(last_when))
-    heatmap_mindur = datetime.timedelta(minutes=args.heatmap_duration)
-    heatmap_mindate = last_when - heatmap_mindur
-    print("Heatmap min duration is {}".format(heatmap_mindur))
+    mindur = datetime.timedelta(minutes=args.duration)
+    heatmap_mindate = last_when - mindur
+    print("min duration is {}".format(mindur))
     print("Heatmap min date is {}".format(heatmap_mindate))
 
     if args.overwrite == False and os.path.exists(args.output_filename):
         # prepare to merge
-        old_df = pandas.read_csv(args.output_filename, index_col=False)
-        old_df.set_index(["MAC", "Session_AP_Name", "Start_Time", "End_Time"],
-                         inplace=True)
+        #old_df = pandas.read_csv(args.output_filename, index_col=False)
+        old_df = pandas.read_csv(args.output_filename)
+        # old_df.set_index(["MAC", "Session_AP_Name", "Start_Time", "End_Time"],
+        #                  inplace=True)
         print("Loaded {} events from output.".format(len(old_df)))
+
     else:
         old_df = pandas.DataFrame(
             columns = ["MAC","Session_AP_Name","Year","Month","Date",
                      "Start_Time","End_Time",
                      "Unix_Start_Time","Unix_End_Time"])
-
+        # old_df.set_index(["MAC", "Session_AP_Name", "Start_Time", "End_Time"],
+        #                  inplace=True)
 
     sessions = []
     with syslogfile(args.input_filename) as db:
@@ -136,35 +139,30 @@ def main ():
                         #     stamac, when, apmac,
                         #     when - q
                         # ))
+                        if when - q >= mindur:
+                            if when >= heatmap_mindate:
+                                ap_heatmap[apmac].add(stamac)
+                                #print("ADD HEATMAP ", stamac)
 
-                        if when >= heatmap_mindate and when - q >= heatmap_mindur:
-                            ap_heatmap[apmac].add(stamac)
-                            #print("ADD HEATMAP ", stamac)
-
-# fields ["MAC","Session_AP_Name","Year","Month","Date","Start_Time","End_Time","Unix_Start_Time","Unix_End_Time"]
-                        # csvwriter.writerow([
-                        #     stamac,
-                        #     apmac,
-                        #     args.year if args.year else when.year,
-                        #     when.month,
-                        #     when.day,
-                        #     q.strftime("%H:%M"),#time HH:MM
-                        #     when.strftime("%H:%M"), #when.time(),
-                        #     time.mktime(q.timetuple()),
-                        #     time.mktime(when.timetuple())
-                        #     ])
-
-                        sessions.append({
-                            "MAC": stamac,
-                            "Session_AP_Name": apmac,
-                            "Year": args.year if args.year else when.year,
-                            "Month": when.month,
-                            "Date": when.day,
-                            "Start_Time": q.strftime("%H:%M"),#time HH:MM
-                            "End_Time":when.strftime("%H:%M"), #when.time(),
-                            "Unix_Start_Time": time.mktime(q.timetuple()),
-                            "Unix_End_Time":time.mktime(when.timetuple())
-                        })
+                            record = {
+                                "MAC": stamac,
+                                "Session_AP_Name": apmac,
+                                "Year": args.year if args.year else when.year,
+                                "Month": when.month,
+                                "Date": when.day,
+                                "Start_Time": q.strftime("%H:%M"),#time HH:MM
+                                "End_Time":when.strftime("%H:%M"), #when.time(),
+                                "Unix_Start_Time": time.mktime(q.timetuple()),
+                                "Unix_End_Time":time.mktime(when.timetuple())
+                            }
+                            index = (record["MAC"],
+                                     record["Session_AP_Name"],
+                                     record["Year"],
+                                     record["Month"],
+                                     record["Date"],
+                                     record["Start_Time"],
+                                     record["End_Time"])
+                            sessions.append(record)
                         del stations[stamac+":"+apmac]
                     else:
                         # duplicate dis
@@ -175,60 +173,60 @@ def main ():
             #     break
 
 
-    print ("end of file -- closing remaining sessions")
-    print(stations)
+    print ("end of file -- closing {} remaining sessions".format(
+        len(stations)
+    ))
 
     for key, q in stations.items():
         stamac, apmac = key.split(":")
         when = last_when # assume end time is now
 
-        if when - q > heatmap_mindur:
+        if when - q > mindur:
             ap_heatmap[apmac].add(stamac)
             #print("ADD HEATMAP ", stamac)
 
+            record = {
+                "MAC": stamac,
+                "Session_AP_Name": apmac,
+                "Year": args.year if args.year else when.year,
+                "Month": when.month,
+                "Date": when.day,
+                "Start_Time": q.strftime("%H:%M"),#time HH:MM
+                "End_Time":when.strftime("%H:%M"), #when.time(),
+                "Unix_Start_Time": time.mktime(q.timetuple()),
+                "Unix_End_Time":time.mktime(when.timetuple())
+            }
+            index = (record["MAC"],
+                     record["Session_AP_Name"],
+                     record["Year"],
+                     record["Month"],
+                     record["Date"],
+                     record["Start_Time"],
+                     record["End_Time"])
+            sessions.append(record)
+
         else:
             print("Short duration", when-q, apmac, stamac)
-        # csvwriter.writerow([
-        #     stamac,
-        #     apmac,
-        #     args.year if args.year else when.year,
-        #     when.month,
-        #     when.day,
-        #     q.strftime("%H:%M"),# start time time HH:MM
-        #     when.strftime("%H:%M"), #end time when.time(),
-        #     time.mktime(q.timetuple()),
-        #     time.mktime(when.timetuple())
-        #     ])
-        sessions.append({
-            "MAC": stamac,
-            "Session_AP_Name": apmac,
-            "Year": args.year if args.year else when.year,
-            "Month": when.month,
-            "Date": when.day,
-            "Start_Time": q.strftime("%H:%M"),#time HH:MM
-            "End_Time":when.strftime("%H:%M"), #when.time(),
-            "Unix_Start_Time": time.mktime(q.timetuple()),
-            "Unix_End_Time":time.mktime(when.timetuple())
-        })
+
+
 
     # make a DataFrame
     df = pandas.DataFrame.from_records(sessions,
         columns = ["MAC","Session_AP_Name","Year","Month","Date",
-                   "Start_Time","End_Time","Unix_Start_Time","Unix_End_Time"],
-        index = ["MAC", "Session_AP_Name", "Start_Time", "End_Time"])
-    #
-    # print(df)
-    # print(old_df)
+                   "Start_Time","End_Time","Unix_Start_Time","Unix_End_Time"])
 
-    new = pandas.concat([old_df, df], sort=False)
-    #new = df.drop(dupes)
-    new = new.drop_duplicates()
+    new = old_df.append(df, sort=False, ignore_index=True)
+    new = new.astype('str')
+    new = new.drop_duplicates(subset=["MAC","Session_AP_Name",
+                                      "Year","Month","Date",
+                                      "Start_Time","End_Time"],
+                              ignore_index=True)
 
     print("Writing csv. Old len {}, new len {}.".format(
-        len(df)+len(old_df), len(new)
+        len(old_df), len(new)
     ))
 
-    new.to_csv(args.output_filename)
+    new.to_csv(args.output_filename, index=False)
 
     # create heatmap data
     for k,i in ap_heatmap.items():

@@ -20,7 +20,8 @@ ignore_events = [501218,    # vlan assignment
                  522275,    # User Authentication failed.
                  520002,    # Authentication server request Timeout
                  501037,    # no association found trying to disassociate
-                 522276,    # Authentication Server Out Of Service while serving request
+                 522276,    # Authentication Server Out Of Service while serving request,
+                 522329,    # Auth GSM : STA change repkey failed
                  ]
 
 re_mac = re.compile(r"<MAC: (.*?)>")
