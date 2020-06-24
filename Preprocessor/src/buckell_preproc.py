@@ -90,28 +90,20 @@ def main ():
         # old_df.set_index(["MAC", "Session_AP_Name", "Start_Time", "End_Time"],
         #                  inplace=True)
         print("Loaded {} events from output.".format(len(old_df)))
-
-
-
+        print("Types are", old_df.dtypes)
     else:
-        old_df = pandas.DataFrame(
-            columns = ["MAC","Session_AP_Name","Year","Month","Date",
-                     "Start_Time","End_Time",
-                     "Unix_Start_Time","Unix_End_Time"])
+        old_df = None
+        # old_df = pandas.DataFrame(
+        #     columns = ["MAC","Session_AP_Name","Year","Month","Date",
+        #              "Start_Time","End_Time",
+        #              "Unix_Start_Time","Unix_End_Time"])
 
-    print("Types are", old_df.dtypes)
+
 
     sessions = []
     with syslogfile(args.input_filename) as db:
-        # with open(args.output_filename, 'w') as csvfile:
-        #     csvwriter = csv.writer(csvfile)
-            #, dialect = 'unix')
-            # write csv header
-            # csvwriter.writerow(["MAC","Session_AP_Name","Year","Month","Date",
-            #                     "Start_Time","End_Time",
-            #                     "Unix_Start_Time","Unix_End_Time"])
 
-            # process input file
+        # process input file
         for rawline, when, event in db:
             if event == None:
                 continue
@@ -155,7 +147,7 @@ def main ():
                                 "Start_Time": q.strftime("%H:%M"),#time HH:MM
                                 "End_Time":when.strftime("%H:%M"), #when.time(),
                                 "Unix_Start_Time": time.mktime(q.timetuple()),
-                                "Unix_End_Time":time.mktime(when.timetuple())
+                                "Unix_End_Time": time.mktime(when.timetuple())
                             }
                             index = (record["MAC"],
                                      record["Session_AP_Name"],
@@ -219,15 +211,17 @@ def main ():
 
     print("df Types are", df.dtypes)
 
-    new = old_df.append(df, sort=False, ignore_index=True)
-    #new = new.astype('str')
-    new = new.drop_duplicates(subset=["MAC","Session_AP_Name",
-                                      "Year","Month","Date",
-                                      "Start_Time","End_Time"])
+    if old_df is None:
+        new = df
+    else:
+        new = old_df.append(df, sort=False, ignore_index=True)
+        new = new.drop_duplicates(subset=["MAC","Session_AP_Name",
+        "Year","Month","Date",
+        "Start_Time","End_Time"])
 
     print("new Types are", new.dtypes)
     print("Writing csv. Old len {}, new len {}.".format(
-        len(old_df), len(new)
+        0 if old_df is None else len(old_df), len(new)
     ))
 
     new.to_csv(args.output_filename, index=False)
