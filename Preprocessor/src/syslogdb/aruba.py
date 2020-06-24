@@ -22,6 +22,9 @@ ignore_events = [501218,    # vlan assignment
                  501037,    # no association found trying to disassociate
                  522276,    # Authentication Server Out Of Service while serving request,
                  522329,    # Auth GSM : STA change repkey failed
+                 522027,    # IP Spoof from
+                 501053,    # STA UP sent to wrong UAC
+                 524132,    # GSM: Failed to activate PMK-cache object.
                  ]
 
 re_mac = re.compile(r"<MAC: (.*?)>")

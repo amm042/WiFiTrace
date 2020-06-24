@@ -46,7 +46,7 @@ def main ():
     parser.add_argument('-o', '--output_filename', required=True,
                         help='Name of the output file (csv) to write.')
     parser.add_argument('-y', '--year', help="Year to assume for dates",
-                        default=str(datetime.datetime.now().year))
+                        default=None, type=int)
     parser.add_argument('--duration', help="Min duration in minutes for inclusion",
                         default=3)
     # parser.add_argument('-m', '--heatmap_output_filename', required = True,
@@ -91,13 +91,15 @@ def main ():
         #                  inplace=True)
         print("Loaded {} events from output.".format(len(old_df)))
 
+
+
     else:
         old_df = pandas.DataFrame(
             columns = ["MAC","Session_AP_Name","Year","Month","Date",
                      "Start_Time","End_Time",
                      "Unix_Start_Time","Unix_End_Time"])
-        # old_df.set_index(["MAC", "Session_AP_Name", "Start_Time", "End_Time"],
-        #                  inplace=True)
+
+    print("Types are", old_df.dtypes)
 
     sessions = []
     with syslogfile(args.input_filename) as db:
@@ -215,12 +217,15 @@ def main ():
         columns = ["MAC","Session_AP_Name","Year","Month","Date",
                    "Start_Time","End_Time","Unix_Start_Time","Unix_End_Time"])
 
+    print("df Types are", df.dtypes)
+
     new = old_df.append(df, sort=False, ignore_index=True)
-    new = new.astype('str')
+    #new = new.astype('str')
     new = new.drop_duplicates(subset=["MAC","Session_AP_Name",
                                       "Year","Month","Date",
                                       "Start_Time","End_Time"])
 
+    print("new Types are", new.dtypes)
     print("Writing csv. Old len {}, new len {}.".format(
         len(old_df), len(new)
     ))
