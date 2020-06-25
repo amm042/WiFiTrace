@@ -48,7 +48,7 @@ def main ():
     parser.add_argument('-y', '--year', help="Year to assume for dates",
                         default=None, type=int)
     parser.add_argument('--duration', help="Min duration in minutes for inclusion",
-                        default=3)
+                        default=0.25)
     # parser.add_argument('-m', '--heatmap_output_filename', required = True,
     #                     help='Name of file to write heatmap to.')
     parser.add_argument('--overwrite', default=False,
