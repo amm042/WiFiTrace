@@ -25,6 +25,7 @@ ignore_events = [501218,    # vlan assignment
                  522027,    # IP Spoof from
                  501053,    # STA UP sent to wrong UAC
                  524132,    # GSM: Failed to activate PMK-cache object.
+                 524151,    # Failed to delete GSM ager node.
                  ]
 
 re_mac = re.compile(r"<MAC: (.*?)>")

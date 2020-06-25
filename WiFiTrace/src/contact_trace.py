@@ -59,6 +59,9 @@ theta = 0
 
 tmp_dir = "tmp_session/"
 
+json_report = True
+text_report = True
+
 # Helper function to compute past n days
 def get_past_n_days(numdays, date):
     past_n_day_list = []
@@ -69,18 +72,18 @@ def get_past_n_days(numdays, date):
     d = year + "-" + month + "-" + date_val
 
     cr_date = datetime.fromisoformat(d)
-    print("In get_past_n_days ", cr_date)
+    #print("In get_past_n_days ", cr_date)
     #cr_date = date(int(year), int(month), int(date_val))
     #print(cr_date)
 
     sdate = cr_date - timedelta(days=int(numdays))
-    print(d)
+    #print(d)
 
     for i in range(int(numdays) + 1):
         day = sdate + timedelta(days=i)
         past_n_day_list.append(day.strftime("%Y%m%d"))
 
-    print(past_n_day_list)
+    #print(past_n_day_list)
     return(past_n_day_list)
 
 # This function checks for validity of the arguments
@@ -104,8 +107,8 @@ def valid_args(patient_mac, numdays, date):
     """
     patient_mac_flag = True
 
-    if int(numdays) < 1 :
-        print(">> Enter number of days for backtrace greater than 0 \n")
+    if int(numdays) < 0 :
+        print(">> End day must be after start day \n")
     else:
         numdays_flag = True
 
@@ -158,10 +161,23 @@ def get_colocation(row):
 
     # Current AP Traj details
     # 'AP_Trajectory', 'AP_Traj_Start', 'AP_Traj_End', 'AP_Duration',
-    ap_traj = ast.literal_eval(row["AP_Trajectory"])
-    ap_traj_start = ast.literal_eval(row["AP_Traj_Start"])
-    ap_traj_end = ast.literal_eval(row["AP_Traj_End"])
-    ap_traj_duration = ast.literal_eval(row["AP_Duration"])
+
+    def extract(row, col):
+        obj = row[col]
+        if type(obj) == list:
+            return obj
+        else:
+            return ast.literal_eval(obj)
+
+    ap_traj = extract(row, "AP_Trajectory")
+    ap_traj_start = extract(row,"AP_Traj_Start")
+    ap_traj_end = extract(row, "AP_Traj_End")
+    ap_traj_duration = extract(row, "AP_Duration")
+
+    # ap_traj = ast.literal_eval(row["AP_Trajectory"])
+    # ap_traj_start = ast.literal_eval(row["AP_Traj_Start"])
+    # ap_traj_end = ast.literal_eval(row["AP_Traj_End"])
+    # ap_traj_duration = ast.literal_eval(row["AP_Duration"])
 
     #print(len(ap_traj), len(patient_stat_ap_traj))
 
@@ -221,6 +237,8 @@ def get_colocation(row):
 
 # This function is used for printing the co-located user report
 def get_user_report(patient_mac, odate, numdays, start_date, end_date):
+    global json_report
+    global text_report
     print("get_user_report: flist is", flist)
     df_list = []
     result = pd.DataFrame()
@@ -231,9 +249,9 @@ def get_user_report(patient_mac, odate, numdays, start_date, end_date):
         df_list.append(df)
 
     result = pd.concat([item for item in df_list], ignore_index=True)
-    print(list(result))
-    print(len(result.index))
-    print(result["Date"].unique())
+    # print(list(result))
+    # print(len(result.index))
+    # print(result["Date"].unique())
 
     # Now, print the user report by the user : most co-located to least co-located
     # Group by mac , compute total duration of stay and get the mac ids in descending order by co-location duration
@@ -256,8 +274,7 @@ def get_user_report(patient_mac, odate, numdays, start_date, end_date):
 
     user_report_fname = report_dir + "User_Report_" + patient_mac + "_" + odate + "_" + numdays
 
-    json_report = True
-    text_report = False
+
     if json_report:
         doc = {'doctype': 'user report',
                'created': datetime.now().isoformat()}
@@ -313,7 +330,8 @@ def get_user_report(patient_mac, odate, numdays, start_date, end_date):
                 json.dump(doc, f, indent=True,sort_keys=False)
 
     if text_report:
-        f = open(user_report_fname + ".txt", "a+")
+        #f = open(user_report_fname + ".txt", "a+")
+        f = open(user_report_fname + ".txt", "w")
         f.write("\n This is a User Report with details about all users co-located with : \n ")
         f.write("\t\t\t Patient MAC %s \n" % patient_mac)
         f.write("\t\t\t From %s till %s\n \n" %(start_date, end_date))
@@ -376,8 +394,8 @@ def get_user_report(patient_mac, odate, numdays, start_date, end_date):
                         start_min = int(co_start[k] % 60)
                         end_hr = int(co_end[k] / 60)
                         end_min = int(co_end[k] % 60)
-                        print(co_start, start_hr, start_min)
-                        print(co_end, end_hr, end_min)
+                        #print(co_start, start_hr, start_min)
+                        #print(co_end, end_hr, end_min)
                         #f.write("%9s \t %4d \t %4d \t %6s \t %9s \t %15s \t %9s \n" % (df_date, co_start[k], co_end[k],
                         #                                                                       bldg, room, co_traj[k], co_duration[k]))
                         f.write("%8s \t %4d:%2d \t %4d:%2d \t %6s \t %9s \n" % (df_date, start_hr, start_min, end_hr, end_min,
@@ -467,8 +485,6 @@ def get_traj(row):
         else:
             AP_traj_end_list1[-1] = end_list[i]
 
-    #print "Compressed AP list"
-
     # Compute the durations at each AP
     AP_duration1 = [x-y for x,y in zip(AP_traj_end_list1, AP_traj_start_list1)]
 
@@ -477,7 +493,7 @@ def get_traj(row):
     AP_traj_end_list.append(AP_traj_end_list1)
     AP_duration.append(AP_duration1)
 
-    print(len(AP_traj_list), len(AP_traj_start_list), len(AP_traj_end_list), len(AP_duration))
+    #print(len(AP_traj_list), len(AP_traj_start_list), len(AP_traj_end_list), len(AP_duration))
 
 def min_of_day(row):
     st = row["Start_Time"]
@@ -494,6 +510,10 @@ def min_of_day(row):
 # This function returns the entire contact trace of patient_mac mac id
 def get_trace(patient_mac, numdays, odate, w, sess_length, oformat):
     global idir
+    global AP_traj_list
+    global AP_traj_start_list
+    global AP_traj_end_list
+    global AP_duration
     global patient_stat_ap_traj
     global patient_stat_ap_traj_start
     global patient_stat_ap_traj_end
@@ -502,7 +522,11 @@ def get_trace(patient_mac, numdays, odate, w, sess_length, oformat):
     global flist
     global tmp_dir
 
-    cols = ["MAC", "Session_AP_Name", "Year", "Month", "Date", "Start_Time", "End_Time", "Unix_Start_Time",
+    global json_report
+    global text_report
+
+    cols = ["MAC", "Session_AP_Name", "Year", "Month", "Date",
+            "Start_Time", "End_Time", "Unix_Start_Time",
             "Unix_End_Time"]
 
     # Initiate idir value from config.txt
@@ -511,16 +535,16 @@ def get_trace(patient_mac, numdays, odate, w, sess_length, oformat):
     f.readline()
     f.readline()
     line = f.readline()
-    print(line)
+
     idir=line.split("=")[1].strip()
 
     if(len(idir)==0):
         print("Enter Valid idir name in config file")
 
-    print(idir)
+    print('idir=', idir)
 
     sliding_window = w
-    print(patient_mac, numdays, odate)
+
 
     # Now, that we have the 3 args we need to :
     # (i) Check if the patient_mac is a valid mac id
@@ -536,6 +560,7 @@ def get_trace(patient_mac, numdays, odate, w, sess_length, oformat):
     # Now that we know all the input args are valid, we need to
     # Compute the past n dates from the date entered, account for change of month, year, etc
     past_n_days = get_past_n_days(numdays, odate)
+    print("Beginning trace for ", patient_mac, numdays, odate, past_n_days)
 
     # For each day in the list of past_n_days,
     # (i) Search if the trajectory file exists
@@ -557,11 +582,10 @@ def get_trace(patient_mac, numdays, odate, w, sess_length, oformat):
 
     patient_report_fname = report_dir + "Patient_Report_" + patient_mac + "_" + odate + "_" + numdays
 
-    json_report = True
-    text_report = False
 
     if text_report:
-        f = open(patient_report_fname + ".txt", "a+")
+        #f = open(patient_report_fname + ".txt", "a+")
+        f = open(patient_report_fname + ".txt", "w")
 
         f.write("\n\nThis is the PATIENT REPORT for mac id : %s \n" % patient_mac)
         f.write("Below are the list of locations visited and time of visit by the patient from %s till %s\n \n" % (start_date, end_date))
@@ -580,10 +604,14 @@ def get_trace(patient_mac, numdays, odate, w, sess_length, oformat):
                     'locations': [] }
 
     for date in past_n_days:
+        AP_traj_list = []
+        AP_traj_start_list = []
+        AP_traj_end_list = []
+        AP_duration = []
         for file_ in os.listdir(idir):
             fname = idir + file_        #os.path.join!
-            print("Reading datafile", fname)
             if(fname.endswith(".csv")):
+
                 df1 = pd.read_csv(fname, index_col=False)
             else:
                 continue
@@ -608,13 +636,20 @@ def get_trace(patient_mac, numdays, odate, w, sess_length, oformat):
 
                 date_str = str(year)+m+d
                 if date_str != date:
-                    print("Date %s Match NOT found in %s(session dates for %s)" %(date,fname, date_str))
+                    #print("Date %s Match NOT found in %s(session dates for %s)" %(date,fname, date_str))
                     continue
                 else:
+                    print("="*60)
+                    print("Processing datafile:", fname)
+                    print("="*60)
+
                     # Now, dates matched, so compress the sessions
                     ofile = idir + tmp_dir + file_.split(".csv")[0] + "_temp_traj.csv"
                     # Check if file already processed earlier and saved
+
+                    # ALWAYS overwrite for TESTING
                     if not os.path.exists(ofile) :
+                    #if True:
                         # Add Start and End cols for min of the day
                         df1["Start"], df1["End"] = zip(*df1.apply(min_of_day, axis=1))
 
@@ -631,26 +666,27 @@ def get_trace(patient_mac, numdays, odate, w, sess_length, oformat):
                         df["Month"] = mon
                         df["Date"] = dd
 
-                        print(df)
+                        #print(df)
 
                         # Now, save it
                         if not os.path.exists(idir+tmp_dir):
                             os.makedirs(idir+tmp_dir)
 
                         temp_file = idir + tmp_dir + file_.split(".csv")[0] + "_temp_list.csv"
-                        print(temp_file)
+
                         df.to_csv(temp_file, index=False)
+                        print(">>> Temp List File Saved ({})\n".format(temp_file))
 
-                        print("Temp List File Saved\n")
-
+                        #print(df.head(5))
                         # Now, remove the consequetive repeating elements in AP_list and compress it
                         df.apply(get_traj, axis=1)
 
-                        print(len(AP_traj_list), len(AP_traj_start_list), len(AP_traj_end_list), len(AP_duration))
-                        print(len(df.index))
+                        # print(len(AP_traj_list), len(AP_traj_start_list),
+                        #       len(AP_traj_end_list), len(AP_duration))
+                        # print(len(df.index))
 
-                        df["AP_Trajectory"], df["AP_Traj_Start"], df["AP_Traj_End"], df[
-                            "AP_Duration"] = AP_traj_list, AP_traj_start_list, AP_traj_end_list, AP_duration
+                        df["AP_Trajectory"], df["AP_Traj_Start"], \
+                        df["AP_Traj_End"], df["AP_Duration"] = AP_traj_list, AP_traj_start_list, AP_traj_end_list, AP_duration
 
                         print(">>> Session Compression Completed")
 
@@ -673,10 +709,19 @@ def get_trace(patient_mac, numdays, odate, w, sess_length, oformat):
 
 
                         #print("EVAL: ",(df[df["MAC"] == patient_mac]["AP_Trajectory"].values.tolist())[0])
-                        patient_ap_traj = ast.literal_eval((df[df["MAC"] == patient_mac]["AP_Trajectory"].values.tolist())[0])
-                        patient_ap_traj_start = ast.literal_eval((df[df["MAC"] == patient_mac]["AP_Traj_Start"].values.tolist())[0])
-                        patient_ap_traj_end = ast.literal_eval((df[df["MAC"] == patient_mac]["AP_Traj_End"].values.tolist())[0])
-                        patient_ap_traj_duration = ast.literal_eval((df[df["MAC"] == patient_mac]["AP_Duration"].values.tolist())[0])
+
+
+                        def extract(df, patient_mac, colname):
+                            obj = df[df["MAC"] == patient_mac][colname].values.tolist()[0]
+                            if type(obj) == list:
+                                return obj
+                            else:
+                                return ast.literal_eval(obj)
+
+                        patient_ap_traj = extract(df, patient_mac, "AP_Trajectory")
+                        patient_ap_traj_start = extract(df, patient_mac, "AP_Traj_Start")
+                        patient_ap_traj_end = extract(df, patient_mac, "AP_Traj_End")
+                        patient_ap_traj_duration = extract(df, patient_mac, "AP_Duration")
                         #patient_ap_traj = df[df["MAC"] == patient_mac]["AP_Trajectory"].values.tolist()[0]
                         #patient_ap_traj_start = df[df["MAC"] == patient_mac]["AP_Traj_Start"].values.tolist()[0]
                         #patient_ap_traj_end = df[df["MAC"] == patient_mac]["AP_Traj_End"].values.tolist()[0]
@@ -740,21 +785,24 @@ def get_trace(patient_mac, numdays, odate, w, sess_length, oformat):
                                     }]
                         if text_report:
                             f.write("\n")
-                        print(date)
 
-                        #print(patient_stat_ap_traj)
-                        #print(len(patient_stat_ap_traj))
-                        #print(patient_stat_ap_traj_start)
-                        #print(patient_stat_ap_traj_end)
-                        #print(patient_stat_ap_traj_duration)
 
+                        # print(":"*75)
+                        # print(date)
+                        # print(patient_stat_ap_traj)
+                        # print(patient_stat_ap_traj_start)
+                        # print(patient_stat_ap_traj_end)
+                        # print(patient_stat_ap_traj_duration)
+                        # print(":"*75)
                         # Task (iv)
                         # Now, extract other mac_id's co-located at the same time same place and
                         # compute co-location duration
 
-                        df["Coloc_flag"], df["Coloc_traj"], df["Coloc_start"],df["Coloc_end"], df["Coloc_duration"], df["Total_Coloc_duration"] = zip(*df.apply(get_colocation,axis=1))
+                        df["Coloc_flag"], df["Coloc_traj"], df["Coloc_start"],\
+                        df["Coloc_end"], df["Coloc_duration"], \
+                        df["Total_Coloc_duration"] = zip(*df.apply(get_colocation,axis=1))
 
-                        print("Complete")
+                        print(">>> Tracing Complete")
                         df_new = df[df["Coloc_flag"]==1]
 
                         temp_dir = idir + "temp_df/"
@@ -771,8 +819,11 @@ def get_trace(patient_mac, numdays, odate, w, sess_length, oformat):
                             df_new.to_json(ofname, orient='table', index=False)
                             flist.append(ofname)
 
-                        print(list(df_new))
-                        print(df_new.head(5))
+                        #print(list(df_new))
+                        # print("*"*20)
+                        # print("Colocations:")
+                        # print(df_new.head(5))
+                        # print("*"*20)
 
                     else:
                         if text_report:
@@ -787,7 +838,8 @@ def get_trace(patient_mac, numdays, odate, w, sess_length, oformat):
             json.dump(json_doc, f, indent=True,sort_keys=False)
     # Now, we have saved the files and file list of the co-locators
     # Print reports from these co-locator file lists
+    print(">>> Generating user report")
     print("Flist: ", flist)
     get_user_report(patient_mac, odate, numdays, start_date, end_date)
-
+    print("="*60)
     return(0)

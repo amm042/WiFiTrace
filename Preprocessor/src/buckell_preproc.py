@@ -57,6 +57,11 @@ def main ():
 
     lines = 0
 
+    outdir = os.path.split(args.output_filename)[0]
+    if not os.path.exists(outdir):
+        print("Creating output dir: {}".format(outdir))
+        os.makedirs(outdir)
+
     print("Opening Aruba syslog: ", args.input_filename)
 
     now = datetime.datetime.now()

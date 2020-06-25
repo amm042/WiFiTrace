@@ -31,7 +31,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 # Consider only the stationary periods of the given mac id
 
-# bu test 
+# bu test
 # python3 main.py -m "xOiqnDUa" -s 20200605 -e 20200611 -l 5
 
 # Imports
