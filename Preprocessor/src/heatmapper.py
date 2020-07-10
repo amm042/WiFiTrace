@@ -6,6 +6,9 @@ import argparse
 import datetime
 import pandas
 import math
+import sys
+import traceback
+import os
 # {"date/time": "06/19/2020 11:30 AM",
 #    "aplist": [
 #       {"device": "+48Nms9t", "count": 18},
@@ -98,4 +101,8 @@ def main(server_url = None, db_name = None):
 if __name__=="__main__":
     import secret
 
-    main(secret.server_url, secret.db_name)
+    try:
+        main(secret.server_url, secret.db_name)
+    except:
+      traceback.print_exc()
+      sys.exit(os.EX_SOFTWARE)
