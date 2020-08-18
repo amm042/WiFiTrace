@@ -545,7 +545,7 @@ def get_trace(patient_mac, numdays, odate, w, sess_length, oformat):
 
     sliding_window = w
 
-
+    todaystr = datetime.now().strftime("%Y%m%d")
     # Now, that we have the 3 args we need to :
     # (i) Check if the patient_mac is a valid mac id
     # (ii) Date is a valid date and present in our database
@@ -586,6 +586,9 @@ def get_trace(patient_mac, numdays, odate, w, sess_length, oformat):
     if text_report:
         #f = open(patient_report_fname + ".txt", "a+")
         f = open(patient_report_fname + ".txt", "w")
+
+
+        print("Patient report file is ", patient_report_fname)
 
         f.write("\n\nThis is the PATIENT REPORT for mac id : %s \n" % patient_mac)
         f.write("Below are the list of locations visited and time of visit by the patient from %s till %s\n \n" % (start_date, end_date))
@@ -648,8 +651,10 @@ def get_trace(patient_mac, numdays, odate, w, sess_length, oformat):
                     # Check if file already processed earlier and saved
 
                     # ALWAYS overwrite for TESTING
-                    if not os.path.exists(ofile) :
+                    if todaystr in ofile or not os.path.exists(ofile) :
                     #if True:
+                        if todaystr in ofile:
+                            print(">>> ignore cache for today ", todaystr, ofile)
                         # Add Start and End cols for min of the day
                         df1["Start"], df1["End"] = zip(*df1.apply(min_of_day, axis=1))
 
@@ -673,9 +678,9 @@ def get_trace(patient_mac, numdays, odate, w, sess_length, oformat):
                             os.makedirs(idir+tmp_dir)
 
                         temp_file = idir + tmp_dir + file_.split(".csv")[0] + "_temp_list.csv"
-
-                        df.to_csv(temp_file, index=False)
-                        print(">>> Temp List File Saved ({})\n".format(temp_file))
+                        if todaystr not in temp_file:
+                            df.to_csv(temp_file, index=False)
+                            print(">>> Temp List File Saved ({})\n".format(temp_file))
 
                         #print(df.head(5))
                         # Now, remove the consequetive repeating elements in AP_list and compress it
@@ -691,7 +696,8 @@ def get_trace(patient_mac, numdays, odate, w, sess_length, oformat):
                         print(">>> Session Compression Completed")
 
                         # Now, save it
-                        df.to_csv(ofile, index=False)
+                        if todaystr not in ofile:
+                            df.to_csv(ofile, index=False)
                         #print(df.head(5))
                     else:
                         print(ofile)
