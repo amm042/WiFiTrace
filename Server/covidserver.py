@@ -124,7 +124,7 @@ def run_trace(uid, mac_id, start_date, end_date, min_session_length, pidfile):
     app.logger.info("Trace {} complete in {}.".format(
         uid, datetime.now() - s))
 
-@app.route('/begin_trace/<mac_id>', methods=['POST'])
+@app.route('/begin_trace/<path:mac_id>', methods=['POST'])
 def begin_trace(mac_id):
     "begin a trace using a json object"
 
