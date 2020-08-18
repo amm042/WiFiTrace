@@ -147,7 +147,7 @@ def begin_trace(mac_id):
 
     reports = ["{}_{}_{}_{}.{}".format(
         name,
-        mac_id,
+        mac_id.replace('/','^'),    # fix possible / chars in filename (also changed in wifitrace)
         end_date.strftime("%Y%m%d"),
         (end_date-start_date).days,
         ext) for name, ext in [("User_Report", "txt"),
@@ -189,7 +189,7 @@ def check_trace(uid):
     else:
         return jsonify(success=True, running=False)
 
-@app.route('/get_report/<filename>', methods=['GET'])
+@app.route('/get_report/<path:filename>', methods=['GET'])
 def get_report(filename):
 
     app.logger.info("Get report: {}".format(filename))
