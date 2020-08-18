@@ -272,7 +272,7 @@ def get_user_report(patient_mac, odate, numdays, start_date, end_date):
     if not os.path.exists(report_dir):
         os.mkdir(report_dir)
 
-    user_report_fname = report_dir + "User_Report_" + patient_mac + "_" + odate + "_" + numdays
+    user_report_fname = report_dir + "User_Report_" + patient_mac.replace('/','^') + "_" + odate + "_" + numdays
 
 
     if json_report:
@@ -580,8 +580,7 @@ def get_trace(patient_mac, numdays, odate, w, sess_length, oformat):
     if not os.path.exists(report_dir):
         os.mkdir(report_dir)
 
-    patient_report_fname = report_dir + "Patient_Report_" + patient_mac + "_" + odate + "_" + numdays
-
+    patient_report_fname = report_dir + "Patient_Report_" + patient_mac.replace('/','^') + "_" + odate + "_" + numdays
 
     if text_report:
         #f = open(patient_report_fname + ".txt", "a+")
@@ -817,11 +816,11 @@ def get_trace(patient_mac, numdays, odate, w, sess_length, oformat):
                             os.mkdir(temp_dir)
 
                         if (oformat == "csv" or oformat == "CSV"):
-                            ofname = temp_dir + date + "_" + patient_mac + ".csv"
+                            ofname = temp_dir + date + "_" + patient_mac.replace('/','^') + ".csv"
                             df_new.to_csv(ofname , index=False)
                             flist.append(ofname)
                         else:
-                            ofname = temp_dir + date + "_" + patient_mac + ".json"
+                            ofname = temp_dir + date + "_" + patient_mac.replace('/','^') + ".json"
                             df_new.to_json(ofname, orient='table', index=False)
                             flist.append(ofname)
 
