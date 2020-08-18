@@ -37,7 +37,7 @@ def main(server_url = None, db_name = None):
                         default=15)
     args = parser.parse_args()
     df = pandas.read_csv(args.input_filename)
-
+    df = df.dropna()
     df['datetime'] = df.apply(
         lambda x:datetime.datetime.fromtimestamp(x['Unix_Start_Time']),
         axis=1)

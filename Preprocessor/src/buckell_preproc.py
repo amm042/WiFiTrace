@@ -47,6 +47,8 @@ def main ():
                         help='Name of the output file (csv) to write.')
     parser.add_argument('-y', '--year', help="Year to assume for dates",
                         default=None, type=int)
+    parser.add_argument('--debug_ap', help="AP hash to debug (print details)",
+                        default=None)
     parser.add_argument('--duration', help="Min duration in minutes for inclusion",
                         default=0.25)
     # parser.add_argument('-m', '--heatmap_output_filename', required = True,
@@ -86,7 +88,10 @@ def main ():
     mindur = datetime.timedelta(minutes=args.duration)
     heatmap_mindate = last_when - mindur
     print("min duration is {}".format(mindur))
-    print("Heatmap min date is {}".format(heatmap_mindate))
+    # print("Heatmap min date is {}".format(heatmap_mindate))
+
+    if args.debug_ap:
+        print("Debug station: {}".format(args.debug_ap))
 
     if args.overwrite == False and os.path.exists(args.output_filename):
         # prepare to merge
@@ -104,40 +109,119 @@ def main ():
         #              "Unix_Start_Time","Unix_End_Time"])
 
 
-
+    all_aps = set()
+    all_devs = set()
+    client_sessions = {} # store last ap associated for each client
     sessions = []
     with syslogfile(args.input_filename) as db:
 
         # process input file
         for rawline, when, event in db:
+
+
             if event == None:
-                continue
+                if args.debug_ap and args.debug_ap in rawline:
+                    print("ERROR: No event with this ap: ", rawline)
+                    exit(44)
+                else:
+                    continue
 
             evtinfo = aruba_event(event, rawline)
+
+            if evtinfo == None and args.debug_ap and args.debug_ap in rawline:
+                print("WARN: No aruba event for line:", rawline, event)
+            #    exit(45)
 
             if evtinfo:
                 etype, stamac, apmac = evtinfo
 
+                if args.debug_ap and stamac == args.debug_ap:
+                    print('ERROR: got station as debug ap--HALT')
+                    print(rawline)
+                    exit(56)
+
+                if args.debug_ap and apmac == args.debug_ap:
+                #    print(rawline)
+                    print(etype, stamac, apmac)
+
+                all_aps.add(apmac)
+                all_devs.add(stamac)
+
+                if apmac in all_devs:
+                    print("ERROR: AP in device set!")
+                    print(rawline)
+                    print(evtinfo)
+                    #exit(42)
+                    continue
+                if stamac in all_aps:
+
+                    print("ERROR: Device in AP set!")
+                # if apmac == 'PSgfrasv':
+                    print(rawline)
+                    print(evtinfo)
+                    #exit(43)
+                    continue
+
                 if etype == 'assoc':
                     dupe = False
+
+                    if stamac in client_sessions:
+                        if client_sessions[stamac] != apmac:
+                            # disassociate from old station
+                            oldap = client_sessions[stamac]
+                            q = stations[stamac+":"+oldap]
+                            record = {
+                                "MAC": stamac,
+                                "Session_AP_Name": oldap,
+                                "Year": args.year if args.year else when.year,
+                                "Month": when.month,
+                                "Date": when.day,
+                                "Start_Time": q.strftime("%H:%M"),#time HH:MM
+                                "End_Time":when.strftime("%H:%M"), #when.time(),
+                                "Unix_Start_Time": time.mktime(q.timetuple()),
+                                "Unix_End_Time": time.mktime(when.timetuple())
+                            }
+                            sessions.append(record)
+                        del client_sessions[stamac]
+
+                    client_sessions[stamac] = apmac
+
                     if stamac+":"+apmac in stations:
                         # dupe assoc. keep old info
                         pass
+
                     else:
                         # new association
                         stations[stamac+":"+apmac] = when
-                        # print('session begin for {} at {} on {}'.format(
-                        #     stamac, when, apmac
-                        #     ))
+                        if args.debug_ap and args.debug_ap == apmac:
+                            print('session begin for {} at {} on {}'.format(
+                                stamac, when, apmac
+                                ))
 
                 elif etype == 'dis':
+
+                    if stamac in client_sessions:
+                        # this can happen when roaming
+                        # if client_sessions[stamac] != apmac:
+                        #     print("{} got dis but from wrong ap {}, had {}".format(
+                        #         stamac,
+                        #         apmac,
+                        #         client_sessions[stamac]))
+                        #     print(rawline)
+                        #     print(evtinfo)
+                        #     exit(46)
+
+                        del client_sessions[stamac]
+
                     if stamac+":"+apmac in stations:
 
                         q = stations[stamac+":"+apmac]
-                        # print('session end for {} at {} on {} -- len: {}'.format(
-                        #     stamac, when, apmac,
-                        #     when - q
-                        # ))
+
+                        if args.debug_ap and args.debug_ap == apmac:
+                            print('session end for {} at {} on {} -- len: {}'.format(
+                                stamac, when, apmac,
+                                when - q
+                            ))
                         if when - q >= mindur:
                             if when >= heatmap_mindate:
                                 ap_heatmap[apmac].add(stamac)
@@ -154,14 +238,11 @@ def main ():
                                 "Unix_Start_Time": time.mktime(q.timetuple()),
                                 "Unix_End_Time": time.mktime(when.timetuple())
                             }
-                            index = (record["MAC"],
-                                     record["Session_AP_Name"],
-                                     record["Year"],
-                                     record["Month"],
-                                     record["Date"],
-                                     record["Start_Time"],
-                                     record["End_Time"])
                             sessions.append(record)
+                        else:
+                            if args.debug_ap and apmac == args.debug_ap:
+                                print("SHORT SESSION IGNORED: {}, {}, {}".format(
+                                    apmac, stamac, when - q))
                         del stations[stamac+":"+apmac]
                     else:
                         # duplicate dis
@@ -184,6 +265,12 @@ def main ():
             ap_heatmap[apmac].add(stamac)
             #print("ADD HEATMAP ", stamac)
 
+            if args.debug_ap and apmac == args.debug_ap:
+                print('session end for {} at {} on {} -- len: {}'.format(
+                    stamac, when, apmac,
+                    when - q
+             ))
+
             record = {
                 "MAC": stamac,
                 "Session_AP_Name": apmac,
@@ -205,7 +292,8 @@ def main ():
             sessions.append(record)
 
         else:
-            print("Short duration", when-q, apmac, stamac)
+            if not args.debug_ap or args.debug_ap == apmac:
+                print("Short duration", when-q, apmac, stamac)
 
 
 
@@ -231,9 +319,13 @@ def main ():
 
     new.to_csv(args.output_filename, index=False)
 
+    if args.debug_ap:
+        print("DEBUG INFO for {}\n".format(args.debug_ap))
+        print(ap_heatmap[args.debug_ap])
+
     # create heatmap data
-    for k,i in ap_heatmap.items():
-        ap_heatmap[k] = len(i)
+    # for k,i in ap_heatmap.items():
+    #     ap_heatmap[k] = len(i)
 
     # print("AP Heatmap")
     # print(ap_heatmap)
